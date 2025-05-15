@@ -13,6 +13,8 @@ import {
   createOptimizedPicture,
   sampleRUM,
   loadScript,
+  getMetadata,
+  buildBlock,
 } from './aem.js';
 
 /**
@@ -185,13 +187,51 @@ export function buildCarousel(container, visibleSlides = 1, pagination = true) {
   return container;
 }
 
+function buildRecipeBlock() {
+  const recipeH1 = document.querySelector('main h1');
+  let currentElement = recipeH1.nextElementSibling.nextElementSibling;
+  const recipe = {};
+  const recipeProperties = ['Yield', 'Total Time', 'Print', 'Difficulty', 'Save to'];
+  while (currentElement.tagName !== 'H2') {
+    if (currentElement.querySelector('picture')) {
+      recipe.image = currentElement;
+      recipe.attribution = currentElement.nextElementSibling;
+    }
+    if (currentElement.textContent.startsWith('Allergens:')) {
+      recipe.allergens = currentElement;
+    }
+    const prop = currentElement.textContent.trim().split(':')[0];
+    if (recipeProperties.includes(prop)) {
+      recipe[prop] = currentElement.nextElementSibling;
+    }
+    const lastElement = currentElement;
+    currentElement = currentElement.nextElementSibling;
+    lastElement.remove();
+  }
+  const props = recipeProperties.map((prop) => {
+    if (recipe[prop]) {
+      const nameElement = document.createElement('p');
+      nameElement.classList.add('recipe-prop-name');
+      nameElement.textContent = `${prop}:`;
+      return [nameElement, recipe[prop]];
+    }
+    return [];
+  }).flat();
+
+  const recipeBlock = buildBlock('recipe', [props, [recipe.image, recipe.attribution, recipe.allergens]]);
+  recipeH1.nextElementSibling.after(recipeBlock);
+}
+
 /**
  * Builds all synthetic blocks in a container element.
  * @param {Element} main The container element
  */
 function buildAutoBlocks() {
   try {
-    // build auto blocks
+    if (getMetadata('template') === 'recipe') {
+      buildRecipeBlock();
+      // build auto blocks
+    }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Auto Blocking failed', error);
@@ -385,10 +425,10 @@ function autolinkModals(doc) {
  * @param {Element} main The main element
  */
 // eslint-disable-next-line import/prefer-default-export
-export function decorateMain(main) {
+export function decorateMain(main, fragment) {
   decorateIcons(main);
   decorateImages(main);
-  buildAutoBlocks(main);
+  if (!fragment) buildAutoBlocks(main);
   decorateSections(main);
   decorateSectionAnchors(main);
   decorateSectionBackgrounds(main);

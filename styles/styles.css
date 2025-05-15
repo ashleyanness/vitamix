@@ -711,3 +711,9 @@ input[type='radio'] {
   line-height: 0;
 }
 
+
+body.recipe h1 {
+  padding-top: 50px;
+  font-size: var(--heading-size-xxxxl);
+  font-family: var(--body-font-family);
+}
